@@ -6,164 +6,69 @@
     <title>Undangan Khitan - Muhammad Hanif Arshakka</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Firebase Modules (Required for Guestbook/Ucapan) -->
+    
+    <!-- Load Firebase Modules (Hanya untuk keperluan otentikasi jika diperlukan oleh fitur lain, tetapi fitur Buku Tamu dihapus) -->
     <script type="module">
+        // Import Firebase modules minimal
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; // Tetap pertahankan setLogLevel untuk debugging jika diperlukan
 
-        // --- GLOBAL FIREBASE VARIABLES (MANDATORY USE) ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-khitan-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        // --------------------------------------------------
-        
-        // Global variables for Firebase services
-        let app, db, auth;
-        let userId = 'guest'; // Default user ID
+        // --- MANDATORY GLOBAL VARIABLES ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'website-khitan-default';
+        const __initial_auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; 
 
-        // Function to initialize Firebase and authenticate
-        window.initFirebase = async () => {
-            if (!firebaseConfig) {
-                console.error("Firebase configuration is missing.");
-                // Fallback for non-canvas environments: use dummy functions
-                window.loadUcapan = () => console.log('Firestore not initialized. Cannot load Ucapan.');
-                window.submitUcapan = () => console.log('Firestore not initialized. Cannot submit Ucapan.');
-                return;
-            }
+        // User-Provided Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBOtzcpPC49vGmnLGA2K4X1lfw6L2z3Y3Y",
+            authDomain: "website-khitan.firebaseapp.com",
+            projectId: "website-khitan",
+            storageBucket: "website-khitan.firebasestorage.app",
+            messagingSenderId: "194278852363",
+            appId: "1:194278852363:web:33ae19595670f24894440e",
+            measurementId: "G-0VRF5ZM1E1"
+        };
 
+        // Initialize Firebase services
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        // setLogLevel('debug'); // Menonaktifkan logging Firestore karena tidak lagi digunakan.
+
+        let userId = null;
+
+        // --- Authentication Setup ---
+        async function initializeAuth() {
             try {
-                // 1. Initialize App
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                // 2. Authentication
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
+                // Gunakan token custom jika ada, jika tidak, sign in secara anonim
+                if (__initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
-
-                userId = auth.currentUser?.uid || crypto.randomUUID();
-                console.log("Firebase initialized. User ID:", userId);
-
-                // 3. Start Guestbook Listener
-                window.loadUcapan(db, appId);
-
+                userId = auth.currentUser?.uid || crypto.randomUUID(); 
+                console.log("Firebase Auth Initialized. User ID:", userId);
+                // loadUcapan() dihapus
             } catch (error) {
-                console.error("Error initializing Firebase or authentication:", error);
+                console.error("Authentication Error:", error);
             }
-        };
+        }
 
-        // Helper function to get the collection reference for the public guestbook
-        const getPublicCollectionRef = (db, appId, collectionName) => {
-            return collection(db, `artifacts/${appId}/public/data/${collectionName}`);
-        };
+        // --- Form Submission Logic (Tidak ada lagi submitUcapan) ---
 
-        // Function to load guestbook entries in real-time
-        window.loadUcapan = (db, appId) => {
-            const ucapanRef = getPublicCollectionRef(db, appId, 'ucapan');
-            const q = query(ucapanRef);
-
-            onSnapshot(q, (snapshot) => {
-                const ucapanContainer = document.getElementById('ucapan-list');
-                if (!ucapanContainer) return;
-
-                let htmlContent = '';
-                snapshot.docChanges().forEach((change) => {
-                    const data = change.doc.data();
-                    const docId = change.doc.id;
-                    const time = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString('id-ID', {
-                        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                    }) : 'Baru saja';
-
-                    const card = `
-                        <div id="ucapan-${docId}" class="bg-blue-50/70 p-4 rounded-xl shadow-lg border-l-4 border-blue-400 mb-4 transition duration-300 hover:shadow-xl animate-fade-in">
-                            <p class="font-bold text-blue-800 text-lg">${data.nama}</p>
-                            <p class="text-gray-700 mt-1 italic leading-relaxed">${data.ucapan}</p>
-                            <p class="text-xs text-gray-500 mt-2 text-right">(${time})</p>
-                        </div>
-                    `;
-
-                    if (change.type === "added") {
-                        // Prepend new messages to see the latest first
-                        htmlContent = card + htmlContent;
-                    } else if (change.type === "modified") {
-                        const existing = document.getElementById(`ucapan-${docId}`);
-                        if (existing) existing.outerHTML = card;
-                    } else if (change.type === "removed") {
-                        const existing = document.getElementById(`ucapan-${docId}`);
-                        if (existing) existing.remove();
-                    }
-                });
-
-                // Only update innerHTML if new items were added (to avoid flickering on modification/removal)
-                if (snapshot.docChanges().some(c => c.type === "added")) {
-                    ucapanContainer.innerHTML = htmlContent;
-                }
-            }, (error) => {
-                console.error("Error listening to ucapan:", error);
-            });
-        };
-
-        // Function to submit a new guestbook entry
-        window.submitUcapan = async () => {
-            if (!db) {
-                document.getElementById('ucapan-message').textContent = 'Error: Koneksi database tidak tersedia.';
-                document.getElementById('ucapan-message').classList.remove('hidden');
-                return;
+        // Helper function for custom message display (replacing alert())
+        function showMessage(element, text, className, persist = false) {
+            element.textContent = text;
+            element.className = `${className} p-3 mb-4 rounded-lg text-center text-sm font-medium transition duration-300`;
+            element.classList.remove('hidden');
+            if (!persist) {
+                setTimeout(() => {
+                    element.classList.add('hidden');
+                }, 5000);
             }
+        }
 
-            const nama = document.getElementById('ucapan-nama').value.trim();
-            const ucapan = document.getElementById('ucapan-text').value.trim();
-            const messageEl = document.getElementById('ucapan-message');
-
-            if (!nama || !ucapan) {
-                messageEl.textContent = 'Nama dan Ucapan/Doa tidak boleh kosong.';
-                messageEl.classList.remove('hidden');
-                messageEl.classList.add('bg-red-100', 'text-red-700');
-                messageEl.classList.remove('bg-green-100', 'text-green-700');
-                return;
-            }
-            
-            // Show loading state
-            const submitBtn = document.getElementById('submit-ucapan-btn');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-3 inline-block" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Mengirim...';
-
-            try {
-                const ucapanRef = getPublicCollectionRef(db, appId, 'ucapan');
-                await addDoc(ucapanRef, {
-                    nama: nama,
-                    ucapan: ucapan,
-                    userId: userId,
-                    timestamp: serverTimestamp()
-                });
-
-                // Clear form and show success
-                document.getElementById('ucapan-nama').value = '';
-                document.getElementById('ucapan-text').value = '';
-                messageEl.textContent = 'Ucapan dan Doa Anda berhasil terkirim! Terima kasih.';
-                messageEl.classList.remove('hidden');
-                messageEl.classList.add('bg-green-100', 'text-green-700');
-                messageEl.classList.remove('bg-red-100', 'text-red-700');
-
-            } catch (e) {
-                console.error("Error adding document: ", e);
-                messageEl.textContent = 'Gagal mengirim ucapan. Silakan coba lagi.';
-                messageEl.classList.remove('hidden');
-                messageEl.classList.add('bg-red-100', 'text-red-700');
-                messageEl.classList.remove('bg-green-100', 'text-green-700');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = 'Kirim Ucapan & Doa';
-                setTimeout(() => messageEl.classList.add('hidden'), 5000); // Hide message after 5 seconds
-            }
-        };
-
-        // Initialize Firebase on window load
-        window.addEventListener('load', window.initFirebase);
+        // Start the application by initializing authentication
+        window.addEventListener('load', initializeAuth);
     </script>
     <style>
         /* Custom CSS for Animations, Parallax, and mobile-first fixes */
@@ -172,7 +77,8 @@
 
         /* HERO SECTION STYLING & PARALLAX EFFECT */
         #hero-section {
-            background-image: url('https://placehold.co/1200x800/e0f2fe/0369a1?text=Happy+Hanif'); /* Placeholder Image */
+            /* Placeholder Image - replace with a thematic image if available */
+            background-image: url('https://placehold.co/1200x800/e0f2fe/0369a1?text=Assalamualaikum+wr+wb'); 
             background-size: cover;
             background-position: center bottom; /* Start lower for mobile */
             background-attachment: fixed; /* Parallax effect */
@@ -278,9 +184,7 @@
     
     <!-- Background Audio Player -->
     <audio id="background-music" loop>
-        <!-- Ganti URL ini dengan link MP3 yang valid jika Anda mengunduhnya dari Bensound -->
-        <source src="https://www.bensound.com/bensound-kids.mp3" type="audio/mp3" onerror="console.log('Error loading music source. Please replace the Bensound URL.');">
-        Browser Anda tidak mendukung elemen audio.
+        <source src="https://drive.google.com/file/d/1WX9S9Zs-Z6c3LWiKcXRFtxWFZePFzeW7/view?usp=drive_link">
     </audio>
 
     <!-- Open Gate/Modal Screen -->
@@ -313,8 +217,7 @@
 
             <div class="p-6 text-center text-white z-30 max-w-xl mx-auto shadow-2xl rounded-xl bg-blue-900/40 backdrop-blur-sm animate-on-scroll">
                 <p class="text-xl font-light mb-2 drop-shadow-lg">Bismillahirrahmanirrahim</p>
-                <h2 class="text-5xl md:text-6xl font-black mb-4 tracking-tight drop-shadow-2xl font-serif">Muhammad Hanif</h2>
-                <h3 class="text-4xl md:text-5xl font-extrabold text-yellow-300 drop-shadow-xl mb-6">Arshakka</h3>
+                <h2 class="text-5xl md:text-6xl font-extrabold text-yellow-200 drop-shadow-2xl font-serif">Muhammad Hanif Arshakka</h2>
                 <p class="text-lg font-medium drop-shadow-lg mt-4">
                     Dengan penuh syukur dan kebahagiaan, kami mengundang Bapak/Ibu/Saudara/i untuk hadir dalam acara Khitanan putra kami:
                 </p>
@@ -390,7 +293,7 @@
             </div>
         </section>
 
-        <!-- Section 4: RSVP (Konfirmasi Kehadiran) -->
+        <!-- Section 4: RSVP (Konfirmasi Kehadiran) - NOTE: This section is using simulated submission, not Firebase -->
         <section class="py-16 bg-blue-50">
             <div class="container mx-auto px-4 max-w-2xl">
                 <div class="bg-white p-6 md:p-8 rounded-xl shadow-2xl border-t-8 border-blue-500 animate-on-scroll delay-500">
@@ -449,44 +352,8 @@
             </div>
         </section>
 
-        <!-- Section 6: Buku Tamu Digital (Ucapan & Doa) -->
-        <section id="guestbook-section" class="py-16 bg-blue-50">
-            <div class="container mx-auto px-4 max-w-2xl">
-                <div class="animate-on-scroll">
-                    <h2 class="text-3xl font-bold text-blue-700 text-center mb-8">Buku Tamu: Ucapan & Doa</h2>
-                </div>
-
-                <!-- Form Ucapan -->
-                <div class="bg-white p-6 md:p-8 rounded-xl shadow-2xl border-t-8 border-cyan-500 mb-10 animate-on-scroll delay-200">
-                    <h3 class="text-2xl font-semibold text-gray-800 mb-4">Kirim Doa untuk Hanif</h3>
-                    <form onsubmit="event.preventDefault(); submitUcapan();">
-                        <div class="mb-4">
-                            <label for="ucapan-nama" class="block text-gray-700 font-medium mb-2">Nama Anda</label>
-                            <input type="text" id="ucapan-nama" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-cyan-500 focus:border-cyan-500 transition duration-200" required>
-                        </div>
-                        <div class="mb-6">
-                            <label for="ucapan-text" class="block text-gray-700 font-medium mb-2">Ucapan & Doa</label>
-                            <textarea id="ucapan-text" rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-cyan-500 focus:border-cyan-500 transition duration-200" placeholder="Semoga Hanif menjadi anak yang sholeh, berbakti, dan cerdas." required></textarea>
-                        </div>
-                        
-                        <div id="ucapan-message" class="hidden p-3 mb-4 rounded-lg text-center text-sm font-medium transition duration-300"></div>
-                        
-                        <button type="submit" id="submit-ucapan-btn" class="w-full py-3 bg-cyan-500 text-white font-bold rounded-full shadow-lg hover:bg-cyan-600 transition duration-300 transform hover:scale-[1.01]">
-                            Kirim Ucapan & Doa
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Daftar Ucapan -->
-                <div class="animate-on-scroll delay-300">
-                    <h3 class="text-2xl font-bold text-blue-700 mb-4 border-b pb-2">Daftar Ucapan Tamu</h3>
-                    <div id="ucapan-list" class="space-y-4">
-                        <p class="text-center text-gray-500">Memuat ucapan dan doa...</p>
-                        <!-- Ucapan akan dimuat di sini oleh onSnapshot -->
-                    </div>
-                </div>
-            </div>
-        </section>
+        <!-- Section 6: Buku Tamu Digital (Ucapan & Doa) - SECTION INI DIHAPUS -->
+        <!-- Menghapus seluruh bagian Buku Tamu Digital di sini -->
 
         <!-- Footer / Penutup -->
         <footer class="py-12 bg-blue-900 text-white text-center">
@@ -509,7 +376,7 @@
     </main>
 
     <script>
-        // --- JAVASCRIPT LOGIC ---
+        // --- JAVASCRIPT LOGIC (NON-FIREBASE) ---
 
         const targetDate = new Date("Nov 2, 2025 10:00:00").getTime();
         const mainContent = document.getElementById('main-content');
@@ -541,7 +408,8 @@
         function startAudio() {
             if (audio.paused) {
                 audio.volume = 0.6;
-                audio.play().catch(e => console.log('Autoplay blocked:', e));
+                // Attempt to play, catching the error if autoplay is blocked
+                audio.play().catch(e => console.log('Autoplay blocked:', e)); 
                 isPlaying = true;
                 updateAudioIcon();
             }
@@ -673,6 +541,7 @@
         window.addEventListener('load', () => {
             setupScrollAnimations();
             setupParallax();
+            // Note: Firebase initialization is handled by its own event listener above
         });
     </script>
 
