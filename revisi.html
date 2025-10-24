@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Undangan Khitan - Muhammad Hanif Arshakka</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Firebase Modules (Hanya untuk keperluan otentikasi jika diperlukan oleh fitur lain, tetapi fitur Buku Tamu dihapus) -->
+    <script type="module">
+        // Import Firebase modules minimal
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; // Tetap pertahankan setLogLevel untuk debugging jika diperlukan
+
+        // --- MANDATORY GLOBAL VARIABLES ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'website-khitan-default';
+        const __initial_auth_token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null; 
+
+        // User-Provided Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBOtzcpPC49vGmnLGA2K4X1lfw6L2z3Y3Y",
+            authDomain: "website-khitan.firebaseapp.com",
+            projectId: "website-khitan",
+            storageBucket: "website-khitan.firebasestorage.app",
+            messagingSenderId: "194278852363",
+            appId: "1:194278852363:web:33ae19595670f24894440e",
+            measurementId: "G-0VRF5ZM1E1"
+        };
+
+        // Initialize Firebase services
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        // setLogLevel('debug'); // Menonaktifkan logging Firestore karena tidak lagi digunakan.
+
+        let userId = null;
+
+        // --- Authentication Setup ---
+        async function initializeAuth() {
+            try {
+                // Gunakan token custom jika ada, jika tidak, sign in secara anonim
+                if (__initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser?.uid || crypto.randomUUID(); 
+                console.log("Firebase Auth Initialized. User ID:", userId);
+                // loadUcapan() dihapus
+            } catch (error) {
+                console.error("Authentication Error:", error);
+            }
+        }
+
+        // --- Form Submission Logic (Tidak ada lagi submitUcapan) ---
+
+        // Helper function for custom message display (replacing alert())
+        function showMessage(element, text, className, persist = false) {
+            element.textContent = text;
+            element.className = `${className} p-3 mb-4 rounded-lg text-center text-sm font-medium transition duration-300`;
+            element.classList.remove('hidden');
+            if (!persist) {
+                setTimeout(() => {
+                    element.classList.add('hidden');
+                }, 5000);
+            }
+        }
+
+        // Start the application by initializing authentication
+        window.addEventListener('load', initializeAuth);
+    </script>
+    <style>
+        /* Custom CSS for Animations, Parallax, and mobile-first fixes */
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; background-color: #f7f9fc; }
+
+        /* HERO SECTION STYLING & PARALLAX EFFECT */
+        #hero-section {
+            /* Placeholder Image - replace with a thematic image if available */
+            background-image: url('https://placehold.co/1200x800/e0f2fe/0369a1?text=Assalamualaikum+wr+wb'); 
+            background-size: cover;
+            background-position: center bottom; /* Start lower for mobile */
+            background-attachment: fixed; /* Parallax effect */
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+            overflow: hidden;
+            transition: background-position 0.2s ease-out;
+        }
+        
+        /* Floating Planet/Star Icons (Dekorasi Ruang Angkasa) */
+        .planet-icon {
+            position: absolute;
+            z-index: -1;
+            opacity: 0.7;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            transition: transform 0.5s ease-out;
+            animation: float 10s infinite alternate ease-in-out;
+        }
+        .planet-1 { top: 10%; left: 5%; font-size: 3rem; color: #93c5fd; animation-delay: 0s; } /* blue-300 */
+        .planet-2 { bottom: 20%; right: 15%; font-size: 2rem; color: #bfdbfe; animation-delay: 3s; } /* blue-200 */
+        .planet-3 { top: 30%; right: 5%; font-size: 4rem; color: #60a5fa; animation-delay: 6s; } /* blue-400 */
+        .planet-4 { bottom: 5%; left: 25%; font-size: 1.5rem; color: #bfdbfe; animation-delay: 9s; }
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(10px, -10px); }
+        }
+
+        /* Scroll Animation (Fade-In Up) */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+            will-change: opacity, transform;
+        }
+        .animate-on-scroll.in-view {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Modal/Open Gate Styling */
+        #modal-open {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 1);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+            transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
+        }
+
+        /* Responsive Iframe (Google Maps) */
+        .map-container {
+            position: relative;
+            width: 100%;
+            padding-top: 75%; /* 4:3 Aspect Ratio for Mobile */
+            border-radius: 0.75rem; /* rounded-xl */
+            overflow: hidden;
+        }
+        .map-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Audio Player Styling */
+        #audio-player {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 40;
+            width: 48px;
+            height: 48px;
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        #audio-player:hover {
+            background-color: #1d4ed8;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800">
+    
+    <!-- Background Audio Player -->
+    <audio id="background-music" loop>
+        <source src="https://drive.google.com/file/d/1WX9S9Zs-Z6c3LWiKcXRFtxWFZePFzeW7/view?usp=drive_link">
+    </audio>
+
+    <!-- Open Gate/Modal Screen -->
+    <div id="modal-open">
+        <div class="p-8 max-w-sm mx-auto flex flex-col items-center">
+            <div class="text-4xl mb-4 animate-bounce">🪐</div>
+            <p class="text-sm font-medium text-gray-500 mb-2">Undangan Khitan</p>
+            <h1 class="text-3xl font-extrabold text-blue-600 mb-4">Muhammad Hanif Arshakka</h1>
+            <p class="text-md text-gray-700 mb-8 italic">Minggu, 2 November 2025</p>
+            
+            <button onclick="openInvitation()" class="px-8 py-3 bg-blue-500 text-white font-semibold rounded-full shadow-lg hover:bg-blue-600 transition duration-300 transform hover:scale-105">
+                Buka Undangan
+            </button>
+            <p class="text-xs text-gray-400 mt-4">Ketuk untuk melanjutkan dan memutar musik</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main id="main-content" class="hidden">
+        
+        <!-- Section 1: Hero Image / Cover (Parallax) -->
+        <section id="hero-section" class="relative">
+            <!-- Planet Decorations -->
+            <div class="planet-icon planet-1">🪐</div>
+            <div class="planet-icon planet-2">✨</div>
+            <div class="planet-icon planet-3">🚀</div>
+            <div class="planet-icon planet-4">💫</div>
+
+            <div class="bg-black/20 w-full h-full absolute top-0 left-0 z-20"></div>
+
+            <div class="p-6 text-center text-white z-30 max-w-xl mx-auto shadow-2xl rounded-xl bg-blue-900/40 backdrop-blur-sm animate-on-scroll">
+                <p class="text-xl font-light mb-2 drop-shadow-lg">Bismillahirrahmanirrahim</p>
+                <h2 class="text-5xl md:text-6xl font-extrabold text-yellow-200 drop-shadow-2xl font-serif">Muhammad Hanif Arshakka</h2>
+                <p class="text-lg font-medium drop-shadow-lg mt-4">
+                    Dengan penuh syukur dan kebahagiaan, kami mengundang Bapak/Ibu/Saudara/i untuk hadir dalam acara Khitanan putra kami:
+                </p>
+            </div>
+        </section>
+
+        <!-- Section 2: Countdown Timer -->
+        <section class="py-16 bg-white shadow-inner">
+            <div class="container mx-auto px-4 max-w-2xl text-center">
+                <div class="animate-on-scroll">
+                    <h2 class="text-3xl font-bold text-blue-700 mb-4">Waktu Menuju Acara</h2>
+                    <div id="countdown" class="grid grid-cols-4 gap-4 text-center mt-6">
+                        <div class="bg-blue-500 text-white p-4 rounded-xl shadow-lg transform hover:scale-105 transition duration-300">
+                            <span id="days" class="block text-4xl font-extrabold">00</span>
+                            <span class="block text-sm mt-1">Hari</span>
+                        </div>
+                        <div class="bg-blue-500 text-white p-4 rounded-xl shadow-lg transform hover:scale-105 transition duration-300">
+                            <span id="hours" class="block text-4xl font-extrabold">00</span>
+                            <span class="block text-sm mt-1">Jam</span>
+                        </div>
+                        <div class="bg-blue-500 text-white p-4 rounded-xl shadow-lg transform hover:scale-105 transition duration-300">
+                            <span id="minutes" class="block text-4xl font-extrabold">00</span>
+                            <span class="block text-sm mt-1">Menit</span>
+                        </div>
+                        <div class="bg-blue-500 text-white p-4 rounded-xl shadow-lg transform hover:scale-105 transition duration-300">
+                            <span id="seconds" class="block text-4xl font-extrabold">00</span>
+                            <span class="block text-sm mt-1">Detik</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Detail Acara -->
+        <section class="py-16 bg-gray-50">
+            <div class="container mx-auto px-4 max-w-2xl">
+                <div class="animate-on-scroll delay-200">
+                    <h2 class="text-3xl font-bold text-blue-700 text-center mb-8">Detail Acara</h2>
+                </div>
+
+                <!-- Card Detail Waktu -->
+                <div class="bg-white p-6 rounded-xl shadow-xl mb-8 border-t-4 border-blue-400 animate-on-scroll">
+                    <div class="flex items-center text-blue-600 mb-4">
+                        <span class="text-3xl mr-3">🗓️</span>
+                        <h3 class="text-2xl font-semibold">Waktu Pelaksanaan</h3>
+                    </div>
+                    <div class="space-y-3 text-lg text-gray-700">
+                        <p><span class="font-medium text-gray-900">Hari, Tanggal:</span> Minggu, 2 November 2025</p>
+                        <p><span class="font-medium text-gray-900">Pukul:</span> 10.00 WIB - Selesai</p>
+                    </div>
+                </div>
+
+                <!-- Card Detail Lokasi -->
+                <div class="bg-white p-6 rounded-xl shadow-xl border-t-4 border-cyan-400 animate-on-scroll delay-300">
+                    <div class="flex items-center text-blue-600 mb-4">
+                        <span class="text-3xl mr-3">📍</span>
+                        <h3 class="text-2xl font-semibold">Lokasi Acara</h3>
+                    </div>
+                    <p class="text-lg text-gray-700 mb-4 leading-relaxed">
+                        Perumahan Graha Kartika Pratama Blok DA No.21 Rt.002/011, Desa Bojong Baru, Kecamatan Bojong Gede, Kabupaten Bogor
+                    </p>
+                    
+                    <a href="https://maps.app.goo.gl/qkCxPWrUWbtFMtfu6" target="_blank" class="block text-center mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition duration-300 transform hover:scale-[1.02]">
+                        Lihat Lokasi di Google Maps
+                    </a>
+                    
+                    <!-- Google Maps Embed -->
+                    <div class="map-container mt-6 shadow-md">
+                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3963.8562306359516!2d106.790998674994!3d-6.538550193457102!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69c118c7c91c3d%3A0xc3f1d933e1a0b368!2sPerumahan%20Graha%20Kartika%20Pratama!5e0!3m2!1sid!2sid!4v1700000000000!5m2!1sid!2sid" 
+                            allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: RSVP (Konfirmasi Kehadiran) - NOTE: This section is using simulated submission, not Firebase -->
+        <section class="py-16 bg-blue-50">
+            <div class="container mx-auto px-4 max-w-2xl">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-2xl border-t-8 border-blue-500 animate-on-scroll delay-500">
+                    <h2 class="text-3xl font-bold text-blue-700 text-center mb-6">Konfirmasi Kehadiran (RSVP)</h2>
+                    <p class="text-center text-gray-600 mb-6">Mohon konfirmasi kehadiran Anda sebelum tanggal acara.</p>
+                    
+                    <form id="rsvp-form" onsubmit="submitRsvp(event)">
+                        <div class="mb-4">
+                            <label for="rsvp-nama" class="block text-gray-700 font-medium mb-2">Nama Anda</label>
+                            <input type="text" id="rsvp-nama" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-200" required>
+                        </div>
+                        <div class="mb-6">
+                            <label for="rsvp-status" class="block text-gray-700 font-medium mb-2">Konfirmasi</label>
+                            <select id="rsvp-status" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-200" required>
+                                <option value="">Pilih Status</option>
+                                <option value="Hadir">Insya Allah Hadir (1 Orang)</option>
+                                <option value="Hadir+1">Insya Allah Hadir (2 Orang)</option>
+                                <option value="Tidak Hadir">Mohon Maaf Tidak Dapat Hadir</option>
+                            </select>
+                        </div>
+                        
+                        <div id="rsvp-message" class="hidden p-3 mb-4 rounded-lg text-center text-sm font-medium transition duration-300"></div>
+
+                        <button type="submit" id="rsvp-submit-btn" class="w-full py-3 bg-blue-500 text-white font-bold rounded-full shadow-lg hover:bg-blue-600 transition duration-300 transform hover:scale-[1.01]">
+                            Kirim Konfirmasi
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Hadiah Khitan (Angpao Digital) -->
+        <section class="py-16 bg-white">
+            <div class="container mx-auto px-4 max-w-2xl">
+                <div class="animate-on-scroll delay-200">
+                    <h2 class="text-3xl font-bold text-blue-700 text-center mb-8">Hadiah Khitan & Doa Terbaik</h2>
+                    <p class="text-center text-gray-600 mb-6">Tanpa mengurangi rasa hormat, bagi Bapak/Ibu/Saudara/i yang ingin memberikan hadiah, dapat melalui rekening berikut.</p>
+                </div>
+
+                <!-- Card Rekening -->
+                <div class="bg-blue-50 p-6 rounded-xl shadow-xl border-t-4 border-blue-500 animate-on-scroll delay-300">
+                    <div class="flex items-center text-blue-600 mb-4">
+                        <span class="text-3xl mr-3">🎁</span>
+                        <h3 class="text-xl font-semibold">Transfer Bank</h3>
+                    </div>
+                    <p class="text-2xl font-extrabold text-gray-800 mb-1">BCA</p>
+                    <p id="rekening-number" class="text-3xl font-mono text-blue-700 mb-3 border border-dashed border-blue-300 inline-block p-2 rounded-lg">3452335686</p>
+                    <p class="text-lg text-gray-700 mb-4">a/n Rinaldy</p>
+                    
+                    <button onclick="copyRekening('3452335686')" class="w-full py-2 bg-blue-400 text-white rounded-lg font-medium hover:bg-blue-500 transition duration-300 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        Salin Nomor Rekening
+                    </button>
+                    <p id="copy-status" class="text-sm mt-2 text-center hidden transition duration-300 text-green-600 font-medium">Berhasil disalin!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Buku Tamu Digital (Ucapan & Doa) - SECTION INI DIHAPUS -->
+        <!-- Menghapus seluruh bagian Buku Tamu Digital di sini -->
+
+        <!-- Footer / Penutup -->
+        <footer class="py-12 bg-blue-900 text-white text-center">
+            <div class="container mx-auto px-4 max-w-2xl">
+                <div class="mb-4 text-4xl">⭐</div>
+                <h3 class="text-2xl font-extrabold mb-2">Terima Kasih</h3>
+                <p class="text-sm mb-6 opacity-80 leading-relaxed">
+                    Merupakan suatu kehormatan dan kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i berkenan hadir untuk memberikan doa restu kepada putra kami.
+                </p>
+                <p class="text-lg font-medium">Hormat Kami,</p>
+                <p class="text-xl font-bold text-yellow-300 mt-1">Keluarga Rinaldy & Istri</p>
+            </div>
+        </footer>
+
+        <!-- Music Toggle Button -->
+        <div id="audio-player" onclick="toggleAudio()">
+            <svg id="audio-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4z"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+        </div>
+
+    </main>
+
+    <script>
+        // --- JAVASCRIPT LOGIC (NON-FIREBASE) ---
+
+        const targetDate = new Date("Nov 2, 2025 10:00:00").getTime();
+        const mainContent = document.getElementById('main-content');
+        const modal = document.getElementById('modal-open');
+        const audio = document.getElementById('background-music');
+        const audioIcon = document.getElementById('audio-icon');
+        let isPlaying = false;
+
+        // 1. OPEN INVITATION (Modal Close)
+        function openInvitation() {
+            modal.style.opacity = '0';
+            modal.style.visibility = 'hidden';
+            mainContent.classList.remove('hidden');
+            document.body.style.overflowY = 'scroll';
+            
+            // Auto-scroll to Hero
+            setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 500);
+
+            // Start music immediately after user interaction
+            startAudio();
+            
+            // Start countdown
+            startCountdown();
+        }
+
+        // 2. AUDIO CONTROL
+        function startAudio() {
+            if (audio.paused) {
+                audio.volume = 0.6;
+                // Attempt to play, catching the error if autoplay is blocked
+                audio.play().catch(e => console.log('Autoplay blocked:', e)); 
+                isPlaying = true;
+                updateAudioIcon();
+            }
+        }
+
+        function toggleAudio() {
+            if (isPlaying) {
+                audio.pause();
+            } else {
+                audio.play().catch(e => console.log('Manual play blocked:', e));
+            }
+            isPlaying = !isPlaying;
+            updateAudioIcon();
+        }
+
+        function updateAudioIcon() {
+            audioIcon.innerHTML = isPlaying
+                ? '<path d="M11 5L6 9H2v6h4l5 4z"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>' // Speaker icon (playing)
+                : '<path d="M11 5L6 9H2v6h4l5 4z"></path><line x1="22" y1="2" x2="2" y2="22"></line>'; // Mute icon (paused)
+        }
+        
+        // 3. COUNTDOWN TIMER
+        function startCountdown() {
+            const updateTimer = setInterval(function() {
+                const now = new Date().getTime();
+                const distance = targetDate - now;
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                document.getElementById("days").innerHTML = days < 10 ? '0' + days : days;
+                document.getElementById("hours").innerHTML = hours < 10 ? '0' + hours : hours;
+                document.getElementById("minutes").innerHTML = minutes < 10 ? '0' + minutes : minutes;
+                document.getElementById("seconds").innerHTML = seconds < 10 ? '0' + seconds : seconds;
+
+                if (distance < 0) {
+                    clearInterval(updateTimer);
+                    document.getElementById("countdown").innerHTML = "<div class='text-xl font-semibold text-green-600 col-span-4'>ACARA SEDANG BERLANGSUNG!</div>";
+                }
+            }, 1000);
+        }
+
+        // 4. SCROLL ANIMATIONS (Intersection Observer)
+        function setupScrollAnimations() {
+            const elements = document.querySelectorAll('.animate-on-scroll');
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.1
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('in-view');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            elements.forEach(el => observer.observe(el));
+        }
+
+        // 5. PARALLAX EFFECT (Light Parallax)
+        function setupParallax() {
+            const hero = document.getElementById('hero-section');
+            const handleScroll = () => {
+                const scrollPosition = window.pageYOffset;
+                // Move background slowly (simulate parallax)
+                hero.style.backgroundPositionY = `calc(50% - ${scrollPosition * 0.2}px)`;
+
+                // Move floating icons slightly faster
+                document.querySelector('.planet-1').style.transform = `translateY(${scrollPosition * 0.1}px)`;
+                document.querySelector('.planet-2').style.transform = `translateY(${scrollPosition * 0.05}px)`;
+            };
+
+            window.addEventListener('scroll', handleScroll);
+        }
+
+        // 6. RSVP FORM SUBMISSION (Simulated - No Database)
+        function submitRsvp(event) {
+            event.preventDefault();
+            const form = document.getElementById('rsvp-form');
+            const nama = document.getElementById('rsvp-nama').value.trim();
+            const status = document.getElementById('rsvp-status').value;
+            const messageEl = document.getElementById('rsvp-message');
+            const submitBtn = document.getElementById('rsvp-submit-btn');
+
+            if (!nama || !status) return;
+
+            // Simple loading simulation
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Mengirim...';
+
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Kirim Konfirmasi';
+
+                messageEl.textContent = `Terima kasih, ${nama}! Konfirmasi "${status}" Anda telah kami terima.`;
+                messageEl.classList.remove('hidden');
+                messageEl.classList.add('bg-green-100', 'text-green-700');
+                messageEl.classList.remove('bg-red-100', 'text-red-700');
+                form.reset();
+                
+                setTimeout(() => messageEl.classList.add('hidden'), 5000);
+            }, 1500);
+        }
+
+        // 7. COPY REKENING
+        function copyRekening(text) {
+            const statusEl = document.getElementById('copy-status');
+            
+            // Using document.execCommand('copy') for better compatibility in iframe environments
+            const tempInput = document.createElement("textarea");
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+
+            statusEl.textContent = 'Nomor rekening berhasil disalin!';
+            statusEl.classList.remove('hidden');
+            setTimeout(() => { statusEl.classList.add('hidden'); }, 3000);
+        }
+
+        // Initialize all effects when the window loads
+        window.addEventListener('load', () => {
+            setupScrollAnimations();
+            setupParallax();
+            // Note: Firebase initialization is handled by its own event listener above
+        });
+    </script>
+
+</body>
+</html>
